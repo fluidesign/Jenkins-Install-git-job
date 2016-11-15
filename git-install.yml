@@ -1,0 +1,28 @@
+---
+- hosts: all
+  gather_facts: False
+  tasks:
+  - name: Ensure that the git-source dir avalaible
+    file: path=/root/git-source state=directory
+  - name: ensure latest git package avalaible on remote machine
+    unarchive: src=git-2.10.0.tar.gz dest=/root/git-source creates=/root/git-source/git-2.10.0
+  - name: ensure all RPMs requried installed
+    yum: name={{item}} state=present 
+    with_items:
+     - curl-devel
+     - expat-devel
+     - gettext-devel
+     - openssl-devel
+     - zlib-devel
+     - gcc
+     - perl-ExtUtils-MakeMaker
+  - name : Ensure correct version of git version installed, return 1 if right version 0 if wrong or missing 
+    shell: git --version 2> /dev/null |  grep 2.10 | wc -l
+    register: git_installed
+  - debug: msg={{git_installed.stdout}}
+  - name: uninstall wrong git version
+    yum: name=git state=absent
+    when: git_installed.stdout == "0"
+  - name: install correct git version
+    shell: cd /root/git-source/git-2.10.0 && ./configure; make prefix=/usr/local all; make prefix=/usr/local/ install; source ~/.bashrc; 
+    when: git_installed.stdout == "0" 
